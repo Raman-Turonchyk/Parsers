@@ -1,49 +1,38 @@
-import requests
-from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+import re
 
 
-def get_html(url):
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/109.0'
-    }
-    r = requests.get(url, headers=headers)
-    if r.ok:
-        return r.text
-    print(r.status_code)
+def string_converter(text):
+    return ' '.join(text.split())
 
 
-def get_page_data(html):
-    soup = BeautifulSoup(html, 'lxml')
-    print(soup)
-    apartments = soup.find('div', class_='classifieds-list').find_all('a', class_='classified')
-    for apartment in apartments[:1]:
-        # print(apartment)
-        try:
-            link = apartment.find('a', class_='classified').get('href')
-        except AttributeError:
-            link = ''
-        print(link, '+')
+urls = {'1': 'https://r.onliner.by/ak/?rent_type%5B%5D=1_room#bounds%5Blb%5D%5Blat%5D=53.75015083799405&bounds%5Blb%5D%5Blong%5D=27.34249307208699&bounds%5Brt%5D%5Blat%5D=54.04600901977141&bounds%5Brt%5D%5Blong%5D=27.781846402791043',
+        '2': 'https://r.onliner.by/ak/?rent_type%5B%5D=2_rooms#bounds%5Blb%5D%5Blat%5D=53.75015083799405&bounds%5Blb%5D%5Blong%5D=27.34249307208699&bounds%5Brt%5D%5Blat%5D=54.04600901977141&bounds%5Brt%5D%5Blong%5D=27.781846402791043',
+        '3': 'https://r.onliner.by/ak/?rent_type%5B%5D=3_rooms#bounds%5Blb%5D%5Blat%5D=53.75015083799405&bounds%5Blb%5D%5Blong%5D=27.34249307208699&bounds%5Brt%5D%5Blat%5D=54.04600901977141&bounds%5Brt%5D%5Blong%5D=27.781846402791043',
+        '4': 'https://r.onliner.by/ak/?rent_type%5B%5D=4_rooms&rent_type%5B%5D=5_rooms&rent_type%5B%5D=6_rooms#bounds%5Blb%5D%5Blat%5D=53.75015083799405&bounds%5Blb%5D%5Blong%5D=27.34249307208699&bounds%5Brt%5D%5Blat%5D=54.04600901977141&bounds%5Brt%5D%5Blong%5D=27.781846402791043'}
 
-        # try:
-        #     room =
-        # except AttributeError:
-        #     room = None
-        #
-        # try:
-        #     address =
-        # except AttributeError:
-        #     address = ''
-        #
-        # try:
-        #     price =
-        # except AttributeError:
-        #     price = None
+for url in urls.values():
 
+    with webdriver.Safari() as browser:
+        browser.get(url)
 
-def main():
-    url = 'https://r.onliner.by/ak/?rent_type%5B%5D=1_room&rent_type%5B%5D=2_rooms&rent_type%5B%5D=3_rooms&rent_type%5B%5D=4_rooms&rent_type%5B%5D=5_rooms&rent_type%5B%5D=6_rooms&only_owner=true#bounds%5Blb%5D%5Blat%5D=53.81901896704195&bounds%5Blb%5D%5Blong%5D=27.33531995648369&bounds%5Brt%5D%5Blat%5D=53.97681121698969&bounds%5Brt%5D%5Blong%5D=27.789617278027972'
+        WebDriverWait(browser, 30).until(EC.presence_of_element_located((By.CLASS_NAME, 'classifieds-list')))
 
-    get_page_data(get_html(url))
+        apartments = browser.find_element(By.CLASS_NAME, 'classifieds-list').find_elements(By.TAG_NAME, 'a')
+        for apartment in apartments:
+            link = apartment.get_attribute('href')
 
-if __name__ == '__main__':
-    main()
+            section_room = apartment.find_element(By.CLASS_NAME, 'classified__caption-item_type').text
+            room = string_converter(section_room)[0]
+
+            section_address = apartment.find_element(By.CLASS_NAME, 'classified__caption-item_adress').text
+            address = string_converter(section_address)
+
+            region = 'Минск'
+
+            section_price = apartment.find_element(By.CLASS_NAME, 'classified__price-value').text
+            price = re.findall(r'(\d\s*\d+\.*\d*)', section_price)[0]
+            print(link, price, room, address, region, sep='\n')
